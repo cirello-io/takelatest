@@ -1,9 +1,12 @@
-# takelatest
+package takelatest
 
-takelatest implements redux-saga effects takeLatest. It is the open-source version of a similar concept named lastflight.
+import (
+	"context"
+	"fmt"
+	"time"
+)
 
-Example: 
-```go
+func Example_debouncedTimeout() {
 	// The latest Take() call will be executed after previous calls are canceled due to the timeout.
 	done := make(chan struct{})
 	r := &Runner[int]{
@@ -25,4 +28,4 @@ Example:
 	<-done
 	// Output:
 	// 5
-```
+}
