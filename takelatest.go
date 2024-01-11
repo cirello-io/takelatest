@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 // Package takelatest implements redux-saga effects takeLatest.
 package takelatest // import "cirello.io/takelatest"
 
 import (
 	"context"
+	"sync"
 )
 
 // Runner implements the takeLatest effect from redux-saga. Its zero value
@@ -27,25 +27,16 @@ import (
 type Runner[T any] struct {
 	Func func(ctx context.Context, params T)
 
+	mu   sync.Mutex
 	reqs chan T
 }
 
 // Take enqueues the execution of Func with the given parameters.
 func (r *Runner[T]) Take(param T) {
-	r.init()
-	r.reqs <- param
-}
-
-// Close stoppers the runner.
-func (r *Runner[T]) Close() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if r.reqs != nil {
-		close(r.reqs)
-		r.reqs = nil
-	}
-}
-
-func (r *Runner[T]) init() {
-	if r.reqs != nil {
+		r.reqs <- param
 		return
 	}
 	r.reqs = make(chan T)
@@ -60,4 +51,15 @@ func (r *Runner[T]) init() {
 			}
 		}
 	}()
+	r.reqs <- param
+}
+
+// Close stoppers the runner.
+func (r *Runner[T]) Close() {
+	r.mu.Lock()
+	if r.reqs != nil {
+		close(r.reqs)
+		r.reqs = nil
+	}
+	r.mu.Unlock()
 }
