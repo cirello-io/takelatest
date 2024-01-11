@@ -25,6 +25,9 @@ import (
 // Runner implements the takeLatest effect from redux-saga. Its zero value
 // consumes the taken message and does nothing with it.
 type Runner[T any] struct {
+	// Func executes the desired work. Observe context cancellation to know
+	// when the next (aka latest) call comes in. Func cannot be replaced
+	// when the Runner is active, you must Close first.
 	Func func(ctx context.Context, params T)
 
 	mu   sync.Mutex
@@ -41,15 +44,17 @@ func (r *Runner[T]) Take(param T) {
 	}
 	r.reqs = make(chan T)
 	go func() {
+		f := func(ctx context.Context, params T) {}
+		if r.Func != nil {
+			f = r.Func
+		}
 		cancel := func() {}
 		defer func() { cancel() }()
 		for params := range r.reqs {
 			cancel()
 			ctx, c := context.WithCancel(context.Background())
 			cancel = c
-			if r.Func != nil {
-				go r.Func(ctx, params)
-			}
+			go f(ctx, params)
 		}
 	}()
 	r.reqs <- param

@@ -70,3 +70,26 @@ func TestTSRBug(t *testing.T) {
 		t.Fatal("trailing execution did not stop")
 	}
 }
+
+func TestChangingFunc(t *testing.T) {
+	// The runner must not allow Func to be updated on the fly
+	observed := make(chan struct{})
+	r := Runner[any]{}
+	r.Take(nil)
+	r.Func = func(context.Context, any) {
+		observed <- struct{}{}
+	}
+	r.Take(nil)
+	select {
+	case <-observed:
+		t.Fatal("runner must not be reconfigurable once started")
+	case <-time.After(1 * time.Second):
+	}
+	r.Close()
+	r.Take(nil)
+	select {
+	case <-observed:
+	case <-time.After(1 * time.Second):
+		t.Fatal("runner must be reconfigurable once closed")
+	}
+}
