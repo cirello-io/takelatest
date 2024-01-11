@@ -19,6 +19,7 @@ package takelatest
 import (
 	"context"
 	"fmt"
+	"testing"
 	"time"
 )
 
@@ -44,4 +45,28 @@ func Example_debouncedTimeout() {
 	<-done
 	// Output:
 	// 5
+}
+
+func TestTSRBug(t *testing.T) {
+	// The runner must not Terminate-and-Stay-Running.
+	var observed int
+	done := make(chan struct{})
+	time.AfterFunc(1*time.Second, func() {
+		close(done)
+	})
+	r := Runner[any]{
+		Func: func(ctx context.Context, _ any) {
+			select {
+			case <-done:
+				observed = 1
+			case <-ctx.Done():
+			}
+		},
+	}
+	r.Take(nil)
+	r.Close()
+	<-done
+	if observed == 1 {
+		t.Fatal("trailing execution did not stop")
+	}
 }

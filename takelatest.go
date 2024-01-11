@@ -42,6 +42,7 @@ func (r *Runner[T]) Take(param T) {
 	r.reqs = make(chan T)
 	go func() {
 		cancel := func() {}
+		defer func() { cancel() }()
 		for params := range r.reqs {
 			cancel()
 			ctx, c := context.WithCancel(context.Background())
